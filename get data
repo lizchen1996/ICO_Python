@@ -1,0 +1,59 @@
+from websocket import create_connection
+import time
+import gzip
+import ast
+
+# 请求 KLine 数据
+# tradeStr="""{"req": "market.ethusdt.kline.1min","id": "id10", "from": 1513391453, "to": 1513392453}"""
+
+#订阅 Market Depth 数据
+# tradeStr="""{"sub": "market.ethusdt.depth.step5", "id": "id10"}"""
+
+#请求 Market Depth 数据
+# tradeStr="""{"req": "market.ethusdt.depth.step5", "id": "id10"}"""
+
+#订阅 Trade Detail 数据
+# tradeStr="""{"sub": "market.ethusdt.trade.detail", "id": "id10"}"""
+
+#请求 Trade Detail 数据
+# tradeStr="""{"req": "market.ethusdt.trade.detail", "id": "id10"}"""
+
+#请求 Market Detail 数据
+# tradeStr="""{"req": "market.ethusdt.detail", "id": "id12"}"""
+
+
+def get_kline(api_link, trae_info):
+
+	try_times = 1000
+	while try_times != 0:
+		try:
+			ws = create_connection(api_link)
+			break
+		except:
+			try_times -= 1
+			print("connect ws error, retry try_times %d")%(try_times)
+			time.sleep(5)
+	ws.send(trae_info)
+	while(1):
+		recv_data = ws.recv()
+		result = gzip.decompress(recv_data).decode('utf-8')
+		idx = result.find("ping")
+		if idx != -1:
+			ts=result[8:21]
+			pong='{"pong":'+ts+'}'
+			ws.send(pong)
+			ws.send(trae_info)
+		else:
+			idx = result.find("tick")
+			start = idx + len("tick") + 2
+			end = len(result) - 1
+			# print(result)
+			if idx != -1:
+				# print(result[start:end])
+				kline_info = result[start:end]
+				print(ast.literal_eval(kline_info))
+
+if __name__ == '__main__':
+	trade_info="""{"sub": "market.ethusdt.kline.1min","id": "id10"}"""
+	api_link = "wss://api.huobipro.com/ws"
+	get_kline(api_link, trade_info)
